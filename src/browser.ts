@@ -8,6 +8,7 @@ import {
 import type { Browser as BrowserData } from "./_generated/types.gen";
 import type { Context } from "./context";
 import { ignoreNotFound } from "./errors";
+import { isSocketClosed, notRunning, sleep, type ReconnectOptions } from "./reconnect";
 
 /** The slice of Playwright / Playwright-core's browser type used to attach over CDP. */
 export interface CdpLauncher<T> {
@@ -60,6 +61,30 @@ export class Browser {
   /** Attach with a Playwright browser type, e.g. `await b.connect(chromium)`. */
   connect<T>(launcher: CdpLauncher<T>): Promise<T> {
     return launcher.connectOverCDP(this.cdpUrl);
+  }
+
+  /**
+   * Call `run(browser, attempt)` and, when the CDP socket closes, fetch the session again, connect again and call it again
+   * (`attempt` counts from 0). The browser, its pages and their state live on the server and survive a closed socket, so
+   * make `run` continue from `context.pages()`. `run` starts again from the top, so it must be safe to repeat, and it owns the
+   * browser object it is given (close it if you need to). Other errors, and the last one after `maxReconnects` tries, are rethrown.
+   */
+  async withReconnect<B, T>(
+    launcher: CdpLauncher<B>,
+    run: (browser: B, attempt: number) => Promise<T>,
+    options: ReconnectOptions = {},
+  ): Promise<T> {
+    const { maxReconnects = 5, delayMs = 500, isDisconnect = isSocketClosed } = options;
+    for (let attempt = 0; ; attempt++) {
+      await this.refresh();
+      if (this.state !== "running") throw notRunning(this.id, this.state);
+      try {
+        return await run(await launcher.connectOverCDP(this.cdpUrl), attempt);
+      } catch (error) {
+        if (attempt >= maxReconnects || !isDisconnect(error)) throw error;
+      }
+      await sleep(delayMs * (attempt + 1));
+    }
   }
 
   /** Hand the session to a person (`holder` names them in the audit log): agent input pauses until `giveBackControl()`. */

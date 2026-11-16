@@ -1,6 +1,6 @@
 {
   "name": "styne-sdk",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "TypeScript SDK for the Styne API: VMs and cloud browsers.",
   "license": "Apache-2.0",
   "author": "Styne AI <support@styne.ai>",
@@ -27,6 +27,7 @@
   "files": [
     "dist",
     "README.md",
+    "CHANGELOG.md",
     "LICENSE",
     "NOTICE"
   ],

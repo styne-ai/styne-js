@@ -3,6 +3,7 @@ export { Vm, VmCheckpoints, VmFiles, VmPorts } from "./vm";
 export type { FileEntry, PauseTier, RunCommandOptions, RunOptions } from "./vm";
 export { CommandResult, type CommandEvent } from "./command";
 export { Browser, type CdpLauncher, type Control } from "./browser";
+export { isSocketClosed, type ReconnectOptions } from "./reconnect";
 export {
   APIConnectionError,
   APIError,

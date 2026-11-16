@@ -2,13 +2,52 @@ import { createClient, createConfig, type Client } from "./_generated/client";
 import { APIConnectionError, APITimeoutError, StyneError, errorFromResponse, parseRetryAfter } from "./errors";
 import { VERSION } from "./version";
 
-export const DEFAULT_BASE_URL = "https://api.styne.ai/v1";
+export const REGIONS = { ash: "US East (Ashburn)", ams: "Europe (Amsterdam)" } as const;
+export const REGION_ALIASES: Record<string, keyof typeof REGIONS> = { "us-east": "ash", ashburn: "ash", eu: "ams", "eu-central": "ams" };
+export const DEFAULT_REGION = "ash";
+
+/** The API URL of a region (`ash`, `ams`; aliases `us-east` and `eu`). */
+export function regionBaseUrl(region: string): string {
+  return `https://${regionName(region)}.api.styne.ai/v1`;
+}
+
+/** The id of a region (`ash`, `ams`; aliases `us-east` and `eu`). */
+export function regionName(region: string): string {
+  const key = region.trim().toLowerCase();
+  const name = REGION_ALIASES[key] ?? key;
+  if (!Object.prototype.hasOwnProperty.call(REGIONS, name)) {
+    throw new StyneError(`unknown region ${JSON.stringify(region)}: use one of ${Object.keys(REGIONS).join(", ")}`);
+  }
+  return name;
+}
+
+/** The region the client was told to use (`region` or `STYNE_REGION`); undefined leaves a create to the account default. */
+export function chosenRegion(
+  options: { region?: string },
+  env: Record<string, string | undefined> = {},
+): string | undefined {
+  const region = options.region || env["STYNE_REGION"];
+  return region ? regionName(region) : undefined;
+}
+
+export const DEFAULT_BASE_URL = regionBaseUrl(DEFAULT_REGION);
+
+/** Order: `baseUrl`, `STYNE_BASE_URL`, `region`, `STYNE_REGION`, then the default region. */
+export function resolveBaseUrl(
+  options: { baseUrl?: string; region?: string },
+  env: Record<string, string | undefined> = {},
+): string {
+  const region = options.region || env["STYNE_REGION"];
+  return options.baseUrl || env["STYNE_BASE_URL"] || (region ? regionBaseUrl(region) : DEFAULT_BASE_URL);
+}
 export const DEFAULT_MAX_RETRIES = 2;
 export const DEFAULT_TIMEOUT_MS = 60_000;
 
 export interface TransportOptions {
   apiKey: string;
   baseUrl?: string;
+  /** Regional API host: `ash` (US East, default) or `ams` (Europe). Also read from `STYNE_REGION`. */
+  region?: string;
   /** Retries after the first attempt on network errors, 408, 429 and 5xx. Default 2. */
   maxRetries?: number;
   /** Milliseconds to wait for the response headers of one attempt. Default 60000. */
@@ -43,7 +82,7 @@ export function checkBaseUrl(url: string): string {
   const trimmed = url.replace(/\/+$/, "");
   const parsed = new URL(trimmed);
   if (parsed.protocol !== "https:" && !(parsed.protocol === "http:" && LOCAL_HOSTS.has(parsed.hostname))) {
-    throw new StyneError(`base URL must use https (http only for localhost): ${trimmed}`);
+    throw new StyneError(`base URL must use https (http only for localhost): got ${parsed.protocol} for ${parsed.hostname}`);
   }
   return trimmed;
 }
@@ -179,7 +218,7 @@ export function createFetch(options: TransportOptions): typeof fetch {
 
 export function createTransport(options: TransportOptions): { client: Client; fetch: typeof fetch; baseUrl: string } {
   const fetchImpl = createFetch(options);
-  const baseUrl = checkBaseUrl(options.baseUrl ?? DEFAULT_BASE_URL);
+  const baseUrl = checkBaseUrl(resolveBaseUrl(options));
   const client = createClient(createConfig({ baseUrl, fetch: fetchImpl, throwOnError: true }));
   return { client, fetch: fetchImpl, baseUrl };
 }

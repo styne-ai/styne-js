@@ -1,4 +1,4 @@
-# styne
+# styne-sdk
 
 TypeScript SDK for the [Styne API](https://styne.ai): VMs and cloud browsers.
 
@@ -85,6 +85,24 @@ try {
 
 `browser.cdpUrl` is a `wss://` endpoint, so `puppeteer.connect({ browserWSEndpoint: browser.cdpUrl })` works too.
 
+### Keep a session through a dropped socket
+
+The browser, its pages and their state live on the server, so a closed CDP socket does not end the session.
+`browser.withReconnect` reads the session again, connects again and calls your function again (up to 5 times by default):
+
+```ts
+const title = await browser.withReconnect(chromium, async (pw, attempt) => {
+  const context = pw.contexts()[0]!;
+  const page = context.pages()[0] ?? (await context.newPage());
+  if (attempt === 0) await page.goto("https://example.com");
+  return page.title();
+});
+```
+
+Start from `context.pages()`, not from a page object you kept. Options: `maxReconnects`, `delayMs`, `isDisconnect` (default `isSocketClosed`). `run` starts again from the top, so it must be safe to repeat, and it owns the
+browser object it is given. Errors that are not a
+closed socket are rethrown unchanged.
+
 ## Errors
 
 Every error is a `StyneError`:
@@ -113,7 +131,8 @@ try {
 ```ts
 new Styne({
   apiKey: "sty_live_...",   // default: STYNE_API_KEY
-  baseUrl: "https://api.styne.ai/v1", // default: STYNE_BASE_URL or the production API
+  region: "ams",            // "ash" (US East, default) or "ams" (Europe); also us-east, ashburn, eu, eu-central; default: STYNE_REGION
+  baseUrl: "https://ash.api.styne.ai/v1", // overrides region; default: STYNE_BASE_URL
   maxRetries: 2,            // network errors, 408, 429, 5xx; commands and other non-idempotent calls are never retried
   timeoutMs: 60_000,        // wait for the response headers of one attempt
   fetch: customFetch,       // optional

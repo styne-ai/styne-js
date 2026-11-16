@@ -126,7 +126,7 @@ describe.skipIf(!apiKey)("live API", () => {
   it("replays a create with the same idempotency key", async () => {
     const key = `live-test-${crypto.randomUUID()}`;
     const create = () =>
-      fetch("https://api.styne.ai/v1/vms", {
+      fetch(`${process.env["STYNE_BASE_URL"] ?? "https://ash.api.styne.ai/v1"}/vms`, {
         method: "POST",
         headers: { Authorization: `Bearer ${apiKey ?? ""}`, "Content-Type": "application/json", "Idempotency-Key": key },
         body: JSON.stringify({ template: "small", timeout_seconds: 120 }),

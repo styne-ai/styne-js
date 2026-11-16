@@ -19,7 +19,7 @@ import { Browser } from "./browser";
 import type { Context } from "./context";
 import { StyneError } from "./errors";
 import { paginate } from "./pages";
-import { IDEMPOTENT, createTransport, type TransportOptions } from "./transport";
+import { IDEMPOTENT, chosenRegion, createTransport, resolveBaseUrl, type TransportOptions } from "./transport";
 import { Vm } from "./vm";
 
 export interface StyneOptions extends Partial<Omit<TransportOptions, "apiKey">> {
@@ -37,13 +37,22 @@ function pageQuery(options: ListOptions, cursor: string | undefined) {
   return { ...(cursor && { cursor }), ...(options.page_size !== undefined && { limit: options.page_size }) };
 }
 
+/** A create names the client region unless the call names one itself. */
+function withRegion<T extends { region?: string | null }>(params: T, ctx: Context): T {
+  return ctx.region && !params.region ? { ...params, region: ctx.region } : params;
+}
+
+function withVmRegion(params: CreateVm, ctx: Context): CreateVm {
+  return params.snapshot ? params : withRegion(params, ctx);
+}
+
 /** Create, find and list VMs. */
 class Vms {
   constructor(private readonly ctx: Context) {}
 
   /** Start a VM from a template or a snapshot. */
   async create(params: CreateVm = {}): Promise<Vm> {
-    const { data } = await createVm({ client: this.ctx.client, throwOnError: true, body: params, headers: IDEMPOTENT });
+    const { data } = await createVm({ client: this.ctx.client, throwOnError: true, body: withVmRegion(params, this.ctx), headers: IDEMPOTENT });
     return new Vm(this.ctx, data);
   }
 
@@ -78,7 +87,7 @@ class Browsers {
     const { data } = await createBrowser({
       client: this.ctx.client,
       throwOnError: true,
-      body: params,
+      body: withRegion(params, this.ctx),
       headers: IDEMPOTENT,
     });
     return new Browser(this.ctx, data);
@@ -175,8 +184,7 @@ export class Styne {
     const env = (globalThis as { process?: { env?: Record<string, string | undefined> } }).process?.env ?? {};
     const apiKey = options.apiKey ?? env["STYNE_API_KEY"];
     if (!apiKey) throw new StyneError("missing API key: pass `apiKey` or set STYNE_API_KEY");
-    const baseUrl = options.baseUrl ?? env["STYNE_BASE_URL"];
-    this.ctx = createTransport({ ...options, apiKey, ...(baseUrl && { baseUrl }) });
+    this.ctx = { ...createTransport({ ...options, apiKey, baseUrl: resolveBaseUrl(options, env) }), region: chosenRegion(options, env) };
     this.vms = new Vms(this.ctx);
     this.browsers = new Browsers(this.ctx);
     this.snapshots = new Snapshots(this.ctx);

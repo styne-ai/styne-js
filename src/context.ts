@@ -5,4 +5,6 @@ export interface Context {
   client: Client;
   fetch: typeof fetch;
   baseUrl: string;
+  /** The region a create without `region` starts in; undefined: the account default. */
+  region?: string;
 }
