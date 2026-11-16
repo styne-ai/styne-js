@@ -7,7 +7,7 @@ TypeScript SDK for the [Styne API](https://styne.ai): VMs and cloud browsers.
 - Retries with jitter and `Retry-After`, idempotency keys on creates, typed errors that carry the request id
 
 ```sh
-npm install styne
+npm install styne-sdk
 ```
 
 Set `STYNE_API_KEY`, or pass `apiKey` to the constructor.
@@ -18,7 +18,7 @@ API's snake_case field names, so they match the API reference one to one.
 ## Run code in a VM
 
 ```ts
-import { Styne } from "styne";
+import { Styne } from "styne-sdk";
 
 const styne = new Styne();
 
@@ -98,7 +98,7 @@ Every error is a `StyneError`:
 - `CommandError` from `CommandResult.check()`.
 
 ```ts
-import { LimitConcurrentError } from "styne";
+import { LimitConcurrentError } from "styne-sdk";
 
 try {
   await styne.vms.create();
