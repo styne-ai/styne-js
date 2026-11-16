@@ -1,0 +1,68 @@
+{
+  "name": "styne",
+  "version": "0.1.0",
+  "description": "TypeScript SDK for the Styne API: VMs and cloud browsers.",
+  "license": "Apache-2.0",
+  "author": "Styne AI <support@styne.ai>",
+  "type": "module",
+  "sideEffects": false,
+  "engines": {
+    "node": ">=20"
+  },
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": {
+        "types": "./dist/index.d.ts",
+        "default": "./dist/index.js"
+      },
+      "require": {
+        "types": "./dist/index.d.cts",
+        "default": "./dist/index.cjs"
+      }
+    }
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE",
+    "NOTICE"
+  ],
+  "scripts": {
+    "generate": "openapi-ts",
+    "build": "tsup",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint .",
+    "test": "vitest run test/unit",
+    "test:live": "vitest run test/live",
+    "check": "npm run typecheck && npm run lint && npm test && npm run build"
+  },
+  "devDependencies": {
+    "@hey-api/openapi-ts": "^0.99.0",
+    "@types/node": "^26.6.6",
+    "eslint": "^10.15.0",
+    "playwright-core": "^1.65.1",
+    "tsup": "^9.0.0",
+    "typescript": "^6.0.3",
+    "typescript-eslint": "^8.72.2",
+    "vitest": "^5.1.0"
+  },
+  "keywords": [
+    "styne",
+    "vm",
+    "browser",
+    "sandbox",
+    "agents",
+    "sdk"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/styne-ai/styne-js.git"
+  },
+  "homepage": "https://styne.ai",
+  "bugs": {
+    "url": "https://github.com/styne-ai/styne-js/issues"
+  }
+}
